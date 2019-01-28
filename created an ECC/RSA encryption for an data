@@ -1,0 +1,174 @@
+    import random
+    from itertools import count
+    from cryptography.fernet import Fernet
+    import time
+
+    def modular_inverse_multiplicative(number, mod):
+        from itertools import count
+        for i in count():
+            val = number * i
+            if val % mod == 1:
+                break
+        return i
+
+
+    def ascii_conversion(message):
+        num_form = dict()
+        string_message = str(message)
+        for i in range(len(string_message)):
+            num_form[i] = ord(string_message[i])
+        return num_form
+
+
+    def is_prime(a):
+        count = 0
+        counts = 0
+        k = dict()
+        for i in range(2, a - 1):
+            k[count] = a % i
+            count += 1
+        for j in range(len(k)):
+            if k[j] == 0:
+                counts += 1
+        if counts == 0:
+            return True
+        else:
+            return False
+
+
+    def find_prime(f, g):
+        prime = dict()
+        count = 0
+        for i in range(int(f), int(g)):
+            if is_prime(i) is True:
+                prime[count] = i
+                count += 1
+        return prime
+
+
+    def RSA_primes(ai, bi, e):
+        import math
+        from itertools import count
+        for k in count():
+            a = find_prime(ai, bi + k)
+            b = find_prime(ai + 5, bi + 5)
+            for i in range(len(a)):
+                pi = a[i]
+                for j in range(len(a)):
+                    qi = b[j]
+                    phi = (pi - 1) * (qi - 1)
+                    if math.gcd(phi, e) == 1:
+                        break
+                if math.gcd(phi, e) == 1:
+                    break
+            if math.gcd(phi, e) == 1:
+                break
+        v = [pi, qi]
+        return v
+
+
+    def RSA_encrypt(mesg, e, n):
+
+        num_mesg = ascii_conversion(mesg)
+        encrypted_mesg = dict()
+        for i in range(len(num_mesg)):
+            encrypted_mesg[i] = (num_mesg[i] ** e) % n
+            # followed by the math and the encryption
+        return encrypted_mesg
+
+
+    e = 29
+    f = RSA_primes(80, 110, e)
+
+    p = f[1]
+    q = f[0]
+    n = p * q
+    phi = (p - 1) * (q - 1)
+    d = modular_inverse_multiplicative(e, phi)
+    print(e, p, q, n, phi, d, f)
+
+
+    mess = Fernet.generate_key()
+    message = mess.decode('utf-8')
+    print(message)
+
+
+    # the value a constant in an RSA elliptic curve must not be zero
+
+
+    def elliptic_curve_point(a, b):
+        import math
+        import numpy
+        from itertools import count
+        if a == 0:
+            print('invalid curve')
+
+        for x in count():
+            y = math.sqrt(x ** 3 + a * x + b)
+            if numpy.iscomplex(y) is False:
+                return([x, y])
+
+
+    def ECC_single_point_cumulation(x0, y0, mod):
+        from itertools import count
+        counter = 1
+        cyclic_group = dict()
+        a = 2
+        if a == 0:
+            print('the value a constant in an RSA elliptic curve must not be zero')
+        cyclic_group[0] = [x0, y0]
+        x1 = x0
+        y1 = y0
+        x2 = x0
+        y2 = y0
+        slope = ((3 * x1 ** 2 + a) % mod * modular_inverse_multiplicative(2 * y1, mod)) % mod
+
+        x3 = ((slope ** 2) % mod - x1 - x2) % mod
+        y3 = ((slope * (x1 - x3)) % mod - y1) % mod
+
+        cyclic_group[1] = [x3, y3]
+        x2 = x3
+        y2 = y3
+
+        for i in count():  # the group extraction loop
+            slope = (y2 - y1) % mod * modular_inverse_multiplicative((x2 - x1), mod) % mod
+            x3 = ((slope ** 2) % mod - x1 - x2) % mod
+            y3 = (slope * (x1 - x3) % mod - y1) % mod
+            counter += 1
+            cyclic_group[counter] = [x3, y3]
+            print([x3, y3])
+            x2 = x3
+            y2 = y3
+
+            if counter == 17:
+                break
+
+        n = counter + 1
+        return [n, cyclic_group]
+
+
+    def ECC_encrypt(mesg, z, alpha, beta):
+        key = z[1][(alpha * beta) % z[0]]
+        if key[0] == 0 or key[1] == 0:
+            key = z[1][((alpha * beta) % z[0] + 1) % z[0]]
+        encrypted_mesg = dict()
+        for i in range(len(mesg)):
+            encrypted_mesg[i] = mesg[i] * key[1]
+            # the math and the encryption
+        return encrypted_mesg
+
+
+    x0 = 5
+    y0 = 1
+    mod = 17
+    z = ECC_single_point_cumulation(x0, y0, mod)
+    alpha = z[0] / 2
+    beta = z[0] / 2
+    print(x0, y0, mod, z, alpha, beta)
+
+
+    rsa_encrypted_message = RSA_encrypt(message, e, n)
+    print(rsa_encrypted_message)
+
+    ecc_encrypted_message = ECC_encrypt(rsa_encrypted_message, z=z, alpha=alpha, beta=beta)
+    print(ecc_encrypted_message)
